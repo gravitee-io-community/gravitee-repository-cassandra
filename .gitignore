@@ -20,3 +20,7 @@ target/
 .classpath
 .settings/
 .project
+
+# Other
+logs
+*.bak
