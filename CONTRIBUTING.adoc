@@ -11,7 +11,7 @@ We use GitHub issues to track bugs and enhancements. You find a bug in the sourc
 
 Providing the following information will help us to deal quickly with your issue :
 
-* **Overview of the issue** : describe the issue and why this is a bug for you. 
+* **Overview of the issue** : describe the issue and why this is a bug for you.
 * **Gravitee.io version(s)** : possible regression ?
 * **Browsers and Operating System** : Linux/Windows/Docker ? Browser version for the UI, etc ...
 * **You have stack trace, screenshots, logs ?** add these to the issue's description.
