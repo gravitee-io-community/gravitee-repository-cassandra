@@ -93,13 +93,30 @@ public class CassandraPageRepository implements PageRepository {
     public Page create(Page page) throws TechnicalException {
         LOGGER.debug("Create Page {}", page.getName());
 
+        String type = null;
+        String configuration = null;
+        String tryItURL = null;
+        Boolean tryIt = null;
+
+        final PageSource source = page.getSource();
+        if (source != null) {
+            type = source.getType();
+            configuration = source.getConfiguration();
+        }
+
+        final PageConfiguration pageConfiguration = page.getConfiguration();
+        if (pageConfiguration != null) {
+            tryItURL = pageConfiguration.getTryItURL();
+            tryIt = pageConfiguration.isTryIt();
+        }
+
         Statement insert = QueryBuilder.insertInto(PAGES_TABLE)
                 .values(new String[]{"id", "type", "name", "content", "last_contributor", "page_order", "published",
                                 "source_type", "source_configuration", "configuration_tryiturl", "configuration_tryit", "api",
                                 "created_at", "updated_at"},
                         new Object[]{page.getId(), page.getType(), page.getName(), page.getContent(), page.getLastContributor(),
-                                page.getOrder(), page.isPublished(), page.getSource().getType(), page.getSource().getConfiguration(),
-                                page.getConfiguration().getTryItURL(), page.getConfiguration().isTryIt(), page.getApi(),
+                                page.getOrder(), page.isPublished(), type, configuration,
+                                tryItURL, tryIt, page.getApi(),
                                 page.getCreatedAt(), page.getUpdatedAt()});
 
         session.execute(insert);
@@ -111,17 +128,34 @@ public class CassandraPageRepository implements PageRepository {
     public Page update(Page page) throws TechnicalException {
         LOGGER.debug("Update Page {}", page.getName());
 
+        String type = null;
+        String configuration = null;
+        String tryItURL = null;
+        Boolean tryIt = null;
+
+        final PageSource source = page.getSource();
+        if (source != null) {
+            type = source.getType();
+            configuration = source.getConfiguration();
+        }
+
+        final PageConfiguration pageConfiguration = page.getConfiguration();
+        if (pageConfiguration != null) {
+            tryItURL = pageConfiguration.getTryItURL();
+            tryIt = pageConfiguration.isTryIt();
+        }
+
         Statement update = QueryBuilder.update(PAGES_TABLE)
-                .with(set("name", page.getId()))
+                .with(set("name", page.getName()))
                 .and(set("type", page.getType()))
                 .and(set("content", page.getContent()))
                 .and(set("last_contributor", page.getLastContributor()))
                 .and(set("page_order", page.getOrder()))
                 .and(set("published", page.isPublished()))
-                .and(set("source_type", page.getSource().getType()))
-                .and(set("source_configuration", page.getSource().getConfiguration()))
-                .and(set("configuration_tryiturl", page.getConfiguration().getTryItURL()))
-                .and(set("configuration_tryit", page.getConfiguration().isTryIt()))
+                .and(set("source_type", type))
+                .and(set("source_configuration", configuration))
+                .and(set("configuration_tryiturl", tryItURL))
+                .and(set("configuration_tryit", tryIt))
                 .and(set("api", page.getApi()))
                 .and(set("updated_at", page.getUpdatedAt()))
                 .where(eq("id", page.getId()));
@@ -145,7 +179,10 @@ public class CassandraPageRepository implements PageRepository {
             final Page page = new Page();
             page.setId(row.getString("id"));
             page.setName(row.getString("name"));
-            page.setType(PageType.valueOf(row.getString("type").toUpperCase()));
+            final String type = row.getString("type");
+            if (type != null) {
+                page.setType(PageType.valueOf(type.toUpperCase()));
+            }
             page.setContent(row.getString("content"));
             page.setLastContributor(row.getString("last_contributor"));
             page.setOrder(row.getInt("page_order"));
