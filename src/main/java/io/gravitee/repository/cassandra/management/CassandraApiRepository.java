@@ -110,11 +110,16 @@ public class CassandraApiRepository implements ApiRepository {
     public Api create(Api api) throws TechnicalException {
         LOGGER.debug("Create Api [{}]", api.getId());
 
+        final Visibility apiVisibility = api.getVisibility();
+        String visibility = null;
+        if (apiVisibility != null) {
+            visibility = apiVisibility.toString();
+        }
         Statement insert = QueryBuilder.insertInto(APIS_TABLE)
                 .values(new String[]{"id", "name", "description", "version", "definition", "deployed_at", "created_at",
                                 "updated_at", "visibility", "lifecycle_state", "picture", "group", "views"},
                         new Object[]{api.getId(), api.getName(), api.getDescription(), api.getVersion(), api.getDefinition(),
-                                api.getDeployedAt(), api.getCreatedAt(), api.getUpdatedAt(), api.getVisibility().toString(),
+                                api.getDeployedAt(), api.getCreatedAt(), api.getUpdatedAt(), visibility,
                                 api.getLifecycleState().toString(), api.getPicture(), api.getGroup(), api.getViews()});
 
         session.execute(insert);
@@ -156,6 +161,12 @@ public class CassandraApiRepository implements ApiRepository {
 
     private Api apiFromRow(Row row) {
         if (row != null) {
+            final String apiVisibility = row.getString("visibility");
+            Visibility visibility = null;
+            if (apiVisibility != null) {
+                visibility = Visibility.valueOf(apiVisibility.toUpperCase());
+            }
+
             final Api api = new Api();
             api.setId(row.getString("id"));
             api.setName(row.getString("name"));
@@ -165,7 +176,7 @@ public class CassandraApiRepository implements ApiRepository {
             api.setDeployedAt(row.getTimestamp("deployed_at"));
             api.setCreatedAt(row.getTimestamp("created_at"));
             api.setUpdatedAt(row.getTimestamp("updated_at"));
-            api.setVisibility(Visibility.valueOf(row.getString("visibility").toUpperCase()));
+            api.setVisibility(visibility);
             api.setLifecycleState(LifecycleState.valueOf(row.getString("lifecycle_state").toUpperCase()));
             api.setPicture(row.getString("picture"));
             api.setGroup(row.getString("group"));
