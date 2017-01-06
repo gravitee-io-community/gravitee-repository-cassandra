@@ -80,7 +80,8 @@ public class CassandraApplicationRepository implements ApplicationRepository {
         LOGGER.debug("Find Applications by Group list");
 
         // may be wrong : should loop through list and add resultsets to a list of resultset
-        final Statement select = QueryBuilder.select().all().from(APPLICATIONS_TABLE).where(in("id", groups));
+        final Statement select = QueryBuilder.select().all().from(APPLICATIONS_TABLE).allowFiltering()
+                .where(in("group", groups));
 
         final ResultSet resultSet = session.execute(select);
 

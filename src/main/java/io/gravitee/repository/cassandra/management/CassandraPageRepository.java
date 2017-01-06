@@ -93,15 +93,21 @@ public class CassandraPageRepository implements PageRepository {
     public Page create(Page page) throws TechnicalException {
         LOGGER.debug("Create Page {}", page.getName());
 
-        String type = null;
+        String sourceType = null;
         String configuration = null;
         String tryItURL = null;
         Boolean tryIt = null;
+        String pageType = null;
 
         final PageSource source = page.getSource();
         if (source != null) {
-            type = source.getType();
+            sourceType = source.getType();
             configuration = source.getConfiguration();
+        }
+
+        final PageType type = page.getType();
+        if (type != null) {
+            pageType = type.toString();
         }
 
         final PageConfiguration pageConfiguration = page.getConfiguration();
@@ -114,8 +120,8 @@ public class CassandraPageRepository implements PageRepository {
                 .values(new String[]{"id", "type", "name", "content", "last_contributor", "page_order", "published",
                                 "source_type", "source_configuration", "configuration_tryiturl", "configuration_tryit", "api",
                                 "created_at", "updated_at"},
-                        new Object[]{page.getId(), page.getType(), page.getName(), page.getContent(), page.getLastContributor(),
-                                page.getOrder(), page.isPublished(), type, configuration,
+                        new Object[]{page.getId(), pageType, page.getName(), page.getContent(), page.getLastContributor(),
+                                page.getOrder(), page.isPublished(), sourceType, configuration,
                                 tryItURL, tryIt, page.getApi(),
                                 page.getCreatedAt(), page.getUpdatedAt()});
 
@@ -128,31 +134,31 @@ public class CassandraPageRepository implements PageRepository {
     public Page update(Page page) throws TechnicalException {
         LOGGER.debug("Update Page {}", page.getName());
 
-        String type = null;
+        String sourceType = null;
         String configuration = null;
         String tryItURL = null;
         Boolean tryIt = null;
+        String pageType = null;
 
         final PageSource source = page.getSource();
         if (source != null) {
-            type = source.getType();
+            sourceType = source.getType();
             configuration = source.getConfiguration();
         }
 
-        final PageConfiguration pageConfiguration = page.getConfiguration();
-        if (pageConfiguration != null) {
-            tryItURL = pageConfiguration.getTryItURL();
-            tryIt = pageConfiguration.isTryIt();
+        final PageType type = page.getType();
+        if (type != null) {
+            pageType = type.toString();
         }
 
         Statement update = QueryBuilder.update(PAGES_TABLE)
                 .with(set("name", page.getName()))
-                .and(set("type", page.getType()))
+                .and(set("type", pageType))
                 .and(set("content", page.getContent()))
                 .and(set("last_contributor", page.getLastContributor()))
                 .and(set("page_order", page.getOrder()))
                 .and(set("published", page.isPublished()))
-                .and(set("source_type", type))
+                .and(set("source_type", sourceType))
                 .and(set("source_configuration", configuration))
                 .and(set("configuration_tryiturl", tryItURL))
                 .and(set("configuration_tryit", tryIt))
