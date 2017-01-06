@@ -72,6 +72,7 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
         Statement update = QueryBuilder.update(MEMBERSHIPS_TABLE)
                 .with(set("type", membership.getType()))
+                .and(set("created_at", membership.getCreatedAt()))
                 .and(set("updated_at", membership.getUpdatedAt()))
                 .where(eq("user_id", membership.getUserId()))
                 .and(eq("reference_id", membership.getReferenceId()))
