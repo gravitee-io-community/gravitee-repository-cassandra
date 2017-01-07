@@ -54,6 +54,19 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
     @Override
     public void tearDown() {
         LOGGER.debug("Ending tests");
-        session.execute("DROP KEYSPACE IF EXISTS gravitee;");
+        // drop keyspace takes too much time
+        // session.execute("DROP KEYSPACE IF EXISTS gravitee;");
+        session.execute("TRUNCATE gravitee.views;");
+        session.execute("TRUNCATE gravitee.tags;");
+        session.execute("TRUNCATE gravitee.apikeys;");
+        session.execute("TRUNCATE gravitee.apis;");
+        session.execute("TRUNCATE gravitee.applications;");
+        session.execute("TRUNCATE gravitee.events;");
+        session.execute("TRUNCATE gravitee.groups;");
+        session.execute("TRUNCATE gravitee.memberships;");
+        session.execute("TRUNCATE gravitee.pages;");
+        session.execute("TRUNCATE gravitee.plans;");
+        session.execute("TRUNCATE gravitee.users;");
+        session.execute("TRUNCATE gravitee.subscriptions;");
     }
 }
