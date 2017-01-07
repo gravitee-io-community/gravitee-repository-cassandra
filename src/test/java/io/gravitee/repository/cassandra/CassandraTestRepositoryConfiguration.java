@@ -55,7 +55,8 @@ public class CassandraTestRepositoryConfiguration extends ManagementRepositoryCo
     @Bean(destroyMethod = "close")
     public Session session(final Cluster cluster) {
         try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+            // on jenkins, default timeout is reached
+            EmbeddedCassandraServerHelper.startEmbeddedCassandra(100000L);
         } catch (TTransportException | InterruptedException | IOException e) {
             e.printStackTrace();
         }
