@@ -23,10 +23,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import io.gravitee.repository.exceptions.TechnicalException;
 import io.gravitee.repository.management.api.PlanRepository;
-import io.gravitee.repository.management.model.Api;
-import io.gravitee.repository.management.model.LifecycleState;
 import io.gravitee.repository.management.model.Plan;
-import io.gravitee.repository.management.model.Visibility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +34,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
 /**
@@ -68,14 +64,27 @@ public class CassandraPlanRepository implements PlanRepository {
     public Plan create(Plan plan) throws TechnicalException {
         LOGGER.debug("Create Plan {}", plan.getName());
 
+        String status = null;
+        final Plan.Status planStatus = plan.getStatus();
+        if (planStatus != null) {
+            status = planStatus.toString();
+        }
+
+        String security = null;
+        final Plan.PlanSecurityType planSecurity = plan.getSecurity();
+        if (planSecurity != null) {
+            security = planSecurity.toString();
+        }
+
         final Statement insert = QueryBuilder.insertInto(PLANS_TABLE)
                 .values(new String[]{"id", "name", "description", "validation", "type", "plan_order", "apis",
-                                "created_at", "updated_at", "definition", "characteristics"},
+                                "created_at", "updated_at", "definition", "characteristics", "status", "security",
+                                "published_at", "closed_at"},
                         new Object[]{plan.getId(), plan.getName(), plan.getDescription(),
                                 plan.getValidation() == null ? Plan.PlanValidationType.MANUAL.toString() : plan.getValidation().toString(),
                                 plan.getType() == null ? Plan.PlanType.API.toString() : plan.getType().toString(),
                                 plan.getOrder(), plan.getApis(), plan.getCreatedAt(), plan.getUpdatedAt(), plan.getDefinition(),
-                                plan.getCharacteristics()});
+                                plan.getCharacteristics(), status, security, plan.getPublishedAt(), plan.getClosedAt()});
 
         session.execute(insert);
 
@@ -85,6 +94,18 @@ public class CassandraPlanRepository implements PlanRepository {
     @Override
     public Plan update(Plan plan) throws TechnicalException {
         LOGGER.debug("Update Plan {}", plan.getName());
+
+        String status = null;
+        final Plan.Status planStatus = plan.getStatus();
+        if (planStatus != null) {
+            status = planStatus.toString();
+        }
+
+        String security = null;
+        final Plan.PlanSecurityType planSecurity = plan.getSecurity();
+        if (planSecurity != null) {
+            security = planSecurity.toString();
+        }
 
         Statement update = QueryBuilder.update(PLANS_TABLE)
                 .with(set("name", plan.getName()))
@@ -96,6 +117,10 @@ public class CassandraPlanRepository implements PlanRepository {
                 .and(set("updated_at", plan.getUpdatedAt()))
                 .and(set("definition", plan.getDefinition()))
                 .and(set("characteristics", plan.getCharacteristics()))
+                .and(set("status", status))
+                .and(set("security", security))
+                .and(set("published_at", plan.getPublishedAt()))
+                .and(set("closed_at", plan.getClosedAt()))
                 .where(eq("id", plan.getId()));
 
         session.execute(update);
@@ -140,6 +165,16 @@ public class CassandraPlanRepository implements PlanRepository {
             plan.setUpdatedAt(row.getTimestamp("updated_at"));
             plan.setDefinition(row.getString("definition"));
             plan.setCharacteristics(row.getList("characteristics", String.class));
+            final String status = row.getString("status");
+            if (status != null) {
+                plan.setStatus(Plan.Status.valueOf(status));
+            }
+            final String security = row.getString("security");
+            if (security != null) {
+                plan.setSecurity(Plan.PlanSecurityType.valueOf(security));
+            }
+            plan.setPublishedAt(row.getTimestamp("published_at"));
+            plan.setClosedAt(row.getTimestamp("closed_at"));
             return plan;
         }
         return null;

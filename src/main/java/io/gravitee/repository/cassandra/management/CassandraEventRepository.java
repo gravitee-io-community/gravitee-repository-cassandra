@@ -16,8 +16,12 @@
 
 package io.gravitee.repository.cassandra.management;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
 import io.gravitee.common.data.domain.Page;
 import io.gravitee.repository.exceptions.TechnicalException;
 import io.gravitee.repository.management.api.EventRepository;
@@ -31,9 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
 
@@ -100,15 +102,12 @@ public class CassandraEventRepository implements EventRepository {
         LOGGER.debug("Create Event [{}]", event.getId());
 
         Statement insert = QueryBuilder.insertInto(EVENTS_TABLE)
-                .values(new String[]{"id", "type", "payload", "parent_id", "properties_api_id", "properties_origin",
-                                "properties_username", "created_at", "updated_at"},
+                .values(new String[]{"id", "type", "payload", "parent_id", "properties", "created_at", "updated_at"},
                         new Object[]{event.getId(),
                                 event.getType().toString(),
                                 event.getPayload(),
                                 event.getParentId(),
-                                event.getProperties() == null ? "" : event.getProperties().get("api_id"),
-                                event.getProperties() == null ? "" : event.getProperties().get("origin"),
-                                event.getProperties() == null ? "" : event.getProperties().get("username"),
+                                event.getProperties(),
                                 event.getCreatedAt(),
                                 event.getUpdatedAt()});
 
@@ -132,9 +131,7 @@ public class CassandraEventRepository implements EventRepository {
                 .with(set("type", event.getType().toString()))
                 .and(set("payload", event.getPayload()))
                 .and(set("parent_id", event.getParentId()))
-                .and(set("properties_api_id", event.getProperties().get("api_id")))
-                .and(set("properties_origin", event.getProperties().get("origin")))
-                .and(set("properties_username", event.getProperties().get("username")))
+                .and(set("properties", event.getProperties()))
                 .and(set("updated_at", event.getUpdatedAt()))
                 .where(eq("id", event.getId()));
 
@@ -159,83 +156,74 @@ public class CassandraEventRepository implements EventRepository {
         session.execute(delete);
     }
 
-    private List<Event> searchEvent(EventCriteria filter) {
+    private List<Event> searchEvent(final EventCriteria filter) {
         LOGGER.debug("Entering search()");
 
         // Get event ids by type of event
-        List<String> types = filter.getTypes().stream()
+        final List<String> types = filter.getTypes().stream()
                 .map(Enum::toString)
                 .collect(Collectors.toList());
-        List<String> idsType = null;
-        if (types != null && !types.isEmpty()) {
-            idsType = new ArrayList<>();
+        final List<String> idsType = new ArrayList<>(types.size());
+        if (!types.isEmpty()) {
             for (String type: types) {
-                Statement st = QueryBuilder.select("id").from(EVENTS_TABLE)
-                        .allowFiltering()
-                        .where(eq("type", type));
-                final List<String> ids = session.execute(st).all().stream()
-                        .map(row -> row.getString("id"))
-                        .collect(Collectors.toList());
+                final Statement st = QueryBuilder.select("id").from(EVENTS_TABLE).allowFiltering().where(eq("type", type));
+                final List<String> ids = session.execute(st).all().stream().map(row -> row.getString("id")).collect(Collectors.toList());
                 idsType.addAll(ids);
             }
         }
 
-        // Get event ids by event properties
-        List<String> idsProperties = null;
-        Map<String, Object> properties = filter.getProperties();
-        if (properties != null && !properties.isEmpty()) {
-            idsProperties = new ArrayList<>();
-            for (Map.Entry<String, Object> entry : properties.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                if (value instanceof Collection) {
-                    for (String property: (Collection<String>) value) {
-                        final List<String> ids = session.execute(QueryBuilder.select("id").from(EVENTS_TABLE)
-                                .allowFiltering()
-                                .where(eq("properties_" + key, property)))
-                                .all().stream().map(row -> row.getString("id")).collect(Collectors.toList());
-                        idsProperties.addAll(ids);
+        final List<Event> allEvents = new ArrayList<>();
+        final List<ResultSet> resultSets = new ArrayList<>();
+
+        if (filter.getProperties() == null || filter.getProperties().isEmpty()) {
+            resultSets.add(session.execute(getQueryByFilter(filter, idsType)));
+        } else {
+            for (final Map.Entry<String, Object> property : filter.getProperties().entrySet()) {
+                final Object value = property.getValue();
+                if (value instanceof List) {
+                    for (final Object vItem: (List) value) {
+                        final Select.Where query = getQueryByFilter(filter, idsType).and(eq(String.format("properties['%s']",
+                                property.getKey()), vItem));
+
+                        resultSets.add(session.execute(query));
                     }
                 } else {
-                    final List<String> ids = session.execute(QueryBuilder.select("id").from(EVENTS_TABLE)
-                            .allowFiltering()
-                            .where(eq("properties_" + key, value)))
-                            .all().stream().map(row -> row.getString("id")).collect(Collectors.toList());
-                    idsProperties.addAll(ids);
+                    final Select.Where query = getQueryByFilter(filter, idsType).and(eq(String.format("properties['%s']",
+                            property.getKey()), property.getValue()));
+
+                    resultSets.add(session.execute(query));
                 }
             }
         }
 
-        // Get event ids by update range
-        List<String> idsDate = null;
-        if (filter.getFrom() != 0L && filter.getTo() != 0L) {
-            idsDate = session.execute(QueryBuilder.select("id").from(EVENTS_TABLE)
-                    .allowFiltering()
-                    .where(gte("updated_at", new Date(filter.getFrom())))
-                    .and(lt("updated_at", new Date(filter.getTo()))))
-                    .all().stream().map(row -> row.getString("id")).collect(Collectors.toList());
+        for (final ResultSet resultSet : resultSets) {
+            resultSet.forEach(row -> {
+                final Event event = eventFromRow(row);
+                if (!allEvents.contains(event)) {
+                    allEvents.add(event);
+                }
+            });
         }
-
-
-        // Keep ids common to all filters, discard the others
-        // TODO : Refactor this beast !
-        List<String> ids;
-        if (idsType != null && idsProperties != null && idsDate != null) { idsType.retainAll(idsProperties);idsType.retainAll(idsDate);ids = idsType; }
-        else if (idsProperties != null && idsDate != null) { idsProperties.retainAll(idsDate); ids = idsProperties; }
-        else if (idsType != null && idsProperties != null) { idsType.retainAll(idsProperties); ids = idsType; }
-        else if (idsType != null && idsDate != null) { idsType.retainAll(idsDate);ids = idsType; }
-        else if (idsType != null) { ids = idsType; }
-        else if (idsProperties != null) { ids = idsProperties; }
-        else if (idsDate != null) { ids = idsDate; }
-        else { ids = session.execute(QueryBuilder.select("id").from(EVENTS_TABLE)).all().stream().map(row -> row.getString("id")).collect(Collectors.toList()); }
-
-        // Retrieve events corresponding to id list built above
-        List<Event> allEvents = new ArrayList<>();
-        ResultSet resultSet = session.execute(QueryBuilder.select().all().from(EVENTS_TABLE).where(in("id", ids)));
-        resultSet.forEach(row -> allEvents.add(eventFromRow(row)));
         allEvents.sort((e1, e2) -> e2.getUpdatedAt().compareTo(e1.getUpdatedAt()));
 
         return allEvents;
+    }
+
+    private Select.Where getQueryByFilter(final EventCriteria filter, final List<String> idsType) {
+        final Select.Where query = QueryBuilder.select().all().from(EVENTS_TABLE).allowFiltering().where();
+
+        if (filter.getFrom() > 0) {
+            query.and(gte("updated_at", new Date(filter.getFrom())));
+        }
+
+        if (filter.getTo() > 0) {
+            query.and(lt("updated_at", new Date(filter.getTo())));
+        }
+
+        if (!idsType.isEmpty()) {
+            query.and(in("id", idsType));
+        }
+        return query;
     }
 
     private Event eventFromRow(Row row) {
@@ -245,11 +233,7 @@ public class CassandraEventRepository implements EventRepository {
             event.setType(EventType.valueOf(row.getString("type").toUpperCase()));
             event.setPayload(row.getString("payload"));
             event.setParentId(row.getString("parent_id"));
-            event.setProperties(new HashMap<>(Stream.of(
-                    new SimpleEntry<>("api_id", Optional.ofNullable(row.getString("properties_api_id")).orElse("")),
-                    new SimpleEntry<>("origin", Optional.ofNullable(row.getString("properties_origin")).orElse("")),
-                    new SimpleEntry<>("username", Optional.ofNullable(row.getString("properties_username")).orElse("")))
-                    .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue))));
+            event.setProperties(row.getMap("properties", String.class, String.class));
             event.setCreatedAt(row.getTimestamp("created_at"));
             event.setUpdatedAt(row.getTimestamp("updated_at"));
             return event;
