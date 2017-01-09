@@ -33,10 +33,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.desc;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
@@ -69,13 +69,14 @@ public class CassandraPageRepository implements PageRepository {
         LOGGER.debug("Find max Page order by Api ID [{}]", apiId);
 
         final Statement select = QueryBuilder.select().all().from(PAGES_TABLE).allowFiltering()
-                .limit(1)
-                .where(eq("api", apiId))
-                .orderBy(desc("order"));
+                .where(eq("api", apiId));
 
-        final Row row = session.execute(select).one();
+        final List<Row> all = session.execute(select).all();
 
-        return pageFromRow(row).getOrder();
+        return all.stream()
+                .map(this::pageFromRow)
+                .map(Page::getOrder)
+                .reduce(Math::max).orElse(null);
     }
 
     @Override
@@ -151,7 +152,13 @@ public class CassandraPageRepository implements PageRepository {
             pageType = type.toString();
         }
 
-        Statement update = QueryBuilder.update(PAGES_TABLE)
+        final PageConfiguration pageConfiguration = page.getConfiguration();
+        if (pageConfiguration != null) {
+            tryItURL = pageConfiguration.getTryItURL();
+            tryIt = pageConfiguration.isTryIt();
+        }
+
+        final Statement update = QueryBuilder.update(PAGES_TABLE)
                 .with(set("name", page.getName()))
                 .and(set("type", pageType))
                 .and(set("content", page.getContent()))
@@ -193,14 +200,21 @@ public class CassandraPageRepository implements PageRepository {
             page.setLastContributor(row.getString("last_contributor"));
             page.setOrder(row.getInt("page_order"));
             page.setPublished(row.getBool("published"));
-            final PageSource pageSource = new PageSource();
-            pageSource.setType(row.getString("source_type"));
-            pageSource.setConfiguration(row.getString("source_configuration"));
-            page.setSource(pageSource);
+
+            final String sourceType = row.getString("source_type");
+            final String sourceConfiguration = row.getString("source_configuration");
+            if (sourceConfiguration != null || sourceType != null) {
+                final PageSource pageSource = new PageSource();
+                pageSource.setType(sourceType);
+                pageSource.setConfiguration(sourceConfiguration);
+                page.setSource(pageSource);
+            }
+
             final PageConfiguration pageConfiguration = new PageConfiguration();
             pageConfiguration.setTryItURL(row.getString("configuration_tryiturl"));
             pageConfiguration.setTryIt(row.getBool("configuration_tryit"));
             page.setConfiguration(pageConfiguration);
+
             page.setApi(row.getString("api"));
             page.setCreatedAt(row.getTimestamp("created_at"));
             page.setUpdatedAt(row.getTimestamp("updated_at"));
