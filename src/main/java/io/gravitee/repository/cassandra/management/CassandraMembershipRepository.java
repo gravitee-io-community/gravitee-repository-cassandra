@@ -99,6 +99,10 @@ public class CassandraMembershipRepository implements MembershipRepository {
     public Optional<Membership> findById(String userId, MembershipReferenceType referenceType, String referenceId) throws TechnicalException {
         LOGGER.debug("Find Membership by ID [{}]-[{}]-[{}]", userId, referenceType, referenceId);
 
+        if (userId == null) {
+            return Optional.empty();
+        }
+
         final Statement select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE)
                 .where(eq("user_id", userId))
                 .and(eq("reference_id", referenceId))
