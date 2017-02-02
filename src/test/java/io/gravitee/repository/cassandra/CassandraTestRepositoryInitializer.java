@@ -37,6 +37,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         LOGGER.debug("Starting tests");
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS gravitee WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '1' };");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.tenants (id text PRIMARY KEY, name text, description text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.views (id text PRIMARY KEY, name text, description text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.tags (id text PRIMARY KEY, name text, description text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.apikeys (key text PRIMARY KEY, subscription text, application text, plan text, expire_at timestamp, created_at timestamp, updated_at timestamp, revoked_at timestamp, revoked boolean);");
@@ -58,6 +59,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         LOGGER.debug("Ending tests");
         // drop keyspace takes too much time
         // session.execute("DROP KEYSPACE IF EXISTS gravitee;");
+        session.execute("TRUNCATE gravitee.tenants;");
         session.execute("TRUNCATE gravitee.views;");
         session.execute("TRUNCATE gravitee.tags;");
         session.execute("TRUNCATE gravitee.apikeys;");
