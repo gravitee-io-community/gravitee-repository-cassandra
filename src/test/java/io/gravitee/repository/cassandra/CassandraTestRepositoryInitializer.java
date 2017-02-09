@@ -50,7 +50,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.users (username text PRIMARY KEY, source text, source_id text, password text, email text, firstname text, lastname text, roles set<text>, created_at timestamp, updated_at timestamp, last_connection_at timestamp, picture text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.subscriptions (id text PRIMARY KEY, plan text, application text, reason text, status text, created_at timestamp, updated_at timestamp, processed_at timestamp, starting_at timestamp, ending_at timestamp, processed_by text, subscribed_by text);");
 
-        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (key text PRIMARY KEY, lastRequest bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (key text PRIMARY KEY, last_request bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);");
     }
 
     @Override
