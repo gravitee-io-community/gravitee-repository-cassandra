@@ -170,6 +170,9 @@ public class CassandraEventRepository implements EventRepository {
                 final List<String> ids = session.execute(st).all().stream().map(row -> row.getString("id")).collect(Collectors.toList());
                 idsType.addAll(ids);
             }
+            if (idsType.isEmpty()) {
+                return Collections.emptyList();
+            }
         }
 
         final List<Event> allEvents = new ArrayList<>();
