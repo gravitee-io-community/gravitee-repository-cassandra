@@ -42,6 +42,8 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
 /**
  * @author Adel Abdelhak (adel.abdelhak@leansys.fr)
+ * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
+ * @author GraviteeSource Team
  */
 @Repository
 public class CassandraPageRepository implements PageRepository {
@@ -54,7 +56,7 @@ public class CassandraPageRepository implements PageRepository {
     private Session session;
 
     @Override
-    public Collection<Page> findByApi(String apiId) throws TechnicalException {
+    public Collection<Page> findApiPageByApiId(String apiId) throws TechnicalException {
         LOGGER.debug("Find Pages by Api ID [{}]", apiId);
 
         final Statement select = QueryBuilder.select().all().from(PAGES_TABLE).allowFiltering().where(eq("api", apiId));
@@ -65,7 +67,7 @@ public class CassandraPageRepository implements PageRepository {
     }
 
     @Override
-    public Integer findMaxPageOrderByApi(String apiId) throws TechnicalException {
+    public Integer findMaxApiPageOrderByApiId(String apiId) throws TechnicalException {
         LOGGER.debug("Find max Page order by Api ID [{}]", apiId);
 
         final Statement select = QueryBuilder.select().all().from(PAGES_TABLE).allowFiltering()
@@ -120,11 +122,11 @@ public class CassandraPageRepository implements PageRepository {
         Statement insert = QueryBuilder.insertInto(PAGES_TABLE)
                 .values(new String[]{"id", "type", "name", "content", "last_contributor", "page_order", "published",
                                 "source_type", "source_configuration", "configuration_tryiturl", "configuration_tryit", "api",
-                                "created_at", "updated_at"},
+                                "created_at", "updated_at", "homepage"},
                         new Object[]{page.getId(), pageType, page.getName(), page.getContent(), page.getLastContributor(),
                                 page.getOrder(), page.isPublished(), sourceType, configuration,
                                 tryItURL, tryIt, page.getApi(),
-                                page.getCreatedAt(), page.getUpdatedAt()});
+                                page.getCreatedAt(), page.getUpdatedAt(), page.isHomepage()});
 
         session.execute(insert);
 
@@ -133,6 +135,14 @@ public class CassandraPageRepository implements PageRepository {
 
     @Override
     public Page update(Page page) throws TechnicalException {
+        if(page == null){
+            throw new IllegalArgumentException("Page must not be null");
+        }
+
+        if(!findById(page.getId()).isPresent()){
+            throw new IllegalArgumentException(String.format("No page found with id [%s]", page.getId()));
+        }
+
         LOGGER.debug("Update Page {}", page.getName());
 
         String sourceType = null;
@@ -171,6 +181,7 @@ public class CassandraPageRepository implements PageRepository {
                 .and(set("configuration_tryit", tryIt))
                 .and(set("api", page.getApi()))
                 .and(set("updated_at", page.getUpdatedAt()))
+                .and(set("homepage", page.isHomepage()))
                 .where(eq("id", page.getId()));
 
         session.execute(update);
@@ -187,6 +198,23 @@ public class CassandraPageRepository implements PageRepository {
         session.execute(delete);
     }
 
+    @Override
+    public Collection<Page> findApiPageByApiIdAndHomepage(String apiId, boolean isHomepage) throws TechnicalException {
+        LOGGER.debug("Find Page by ApiId and homepage [{}, {}]", apiId, isHomepage);
+
+        final Statement select = QueryBuilder.
+                select().
+                all().
+                from(PAGES_TABLE).
+                allowFiltering().
+                where(eq("api", apiId)).
+                and(eq("homepage", isHomepage));
+
+        List<Row> rowList = session.execute(select).all();
+
+        return rowList.stream().map(this::pageFromRow).collect(Collectors.toSet());
+    }
+
     private Page pageFromRow(Row row) {
         if (row!= null) {
             final Page page = new Page();
@@ -200,6 +228,7 @@ public class CassandraPageRepository implements PageRepository {
             page.setLastContributor(row.getString("last_contributor"));
             page.setOrder(row.getInt("page_order"));
             page.setPublished(row.getBool("published"));
+            page.setHomepage(row.getBool("homepage"));
 
             final String sourceType = row.getString("source_type");
             final String sourceConfiguration = row.getString("source_configuration");
