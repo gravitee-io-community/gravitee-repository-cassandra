@@ -23,6 +23,7 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import io.gravitee.repository.exceptions.TechnicalException;
 import io.gravitee.repository.management.api.ApplicationRepository;
 import io.gravitee.repository.management.model.Application;
+import io.gravitee.repository.management.model.ApplicationStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,13 +50,21 @@ public class CassandraApplicationRepository implements ApplicationRepository {
     private Session session;
 
     @Override
-    public Set<Application> findAll() throws TechnicalException {
+    public Set<Application> findAll(ApplicationStatus... statuses) throws TechnicalException {
         LOGGER.debug("Find all Applications");
 
         final Statement select = QueryBuilder.select().all().from(APPLICATIONS_TABLE);
         final ResultSet resultSet = session.execute(select);
 
-        final Set<Application> applications = resultSet.all().stream().map(this::applicationFromRow).collect(Collectors.toSet());
+        Set<Application> applications = resultSet.all().stream().
+                map(this::applicationFromRow).
+                collect(Collectors.toSet());
+        if (statuses != null && statuses.length > 0) {
+            List<ApplicationStatus> applicationStatuses = Arrays.asList(statuses);
+            applications = applications.stream().
+                    filter(app -> applicationStatuses.contains(app.getStatus())).
+                    collect(Collectors.toSet());
+        }
 
         LOGGER.debug("Found {} applications", applications.size());
         return applications;
@@ -76,7 +85,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
     }
 
     @Override
-    public Set<Application> findByGroups(List<String> groups) throws TechnicalException {
+    public Set<Application> findByGroups(List<String> groups, ApplicationStatus ... statuses) throws TechnicalException {
         LOGGER.debug("Find Applications by Group list");
 
         // may be wrong : should loop through list and add resultsets to a list of resultset
@@ -85,7 +94,14 @@ public class CassandraApplicationRepository implements ApplicationRepository {
 
         final ResultSet resultSet = session.execute(select);
 
-        return resultSet.all().stream().map(this::applicationFromRow).collect(Collectors.toSet());
+        Set<Application> applications = resultSet.all().stream().map(this::applicationFromRow).collect(Collectors.toSet());
+        if (statuses != null && statuses.length > 0) {
+            List<ApplicationStatus> applicationStatuses = Arrays.asList(statuses);
+            applications = applications.stream().
+                    filter(app -> applicationStatuses.contains(app.getStatus())).
+                    collect(Collectors.toSet());
+        }
+        return applications;
     }
 
     @Override
@@ -120,10 +136,10 @@ public class CassandraApplicationRepository implements ApplicationRepository {
         LOGGER.debug("Create Application [{}]", application.getId());
 
         Statement insert = QueryBuilder.insertInto(APPLICATIONS_TABLE)
-                .values(new String[]{"id", "name", "description", "type", "created_at", "updated_at", "group"},
+                .values(new String[]{"id", "name", "description", "type", "created_at", "updated_at", "group", "status"},
                         new Object[]{application.getId(), application.getName(), application.getDescription(),
                                 application.getType(), application.getCreatedAt(), application.getUpdatedAt(),
-                                application.getGroup()});
+                                application.getGroup(), application.getStatus().toString()});
 
         session.execute(insert);
 
@@ -140,6 +156,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
                 .and(set("type", application.getType()))
                 .and(set("updated_at", application.getUpdatedAt()))
                 .and(set("group", application.getGroup()))
+                .and(set("status", application.getStatus().toString()))
                 .where(eq("id", application.getId()));
 
         session.execute(update);
@@ -166,6 +183,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
             application.setCreatedAt(row.getTimestamp("created_at"));
             application.setUpdatedAt(row.getTimestamp("updated_at"));
             application.setGroup(row.getString("group"));
+            application.setStatus(ApplicationStatus.valueOf(row.getString("status")));
             return application;
         }
         return null;
