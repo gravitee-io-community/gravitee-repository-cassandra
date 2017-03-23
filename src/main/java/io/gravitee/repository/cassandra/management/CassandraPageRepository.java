@@ -50,7 +50,8 @@ public class CassandraPageRepository implements PageRepository {
 
     private final Logger LOGGER = LoggerFactory.getLogger(CassandraPageRepository.class);
 
-    private final String PAGES_TABLE = "pages";
+    private static final String PAGES_TABLE = "pages";
+    private static final String NULL = "NULL";
 
     @Autowired
     private Session session;
@@ -78,7 +79,7 @@ public class CassandraPageRepository implements PageRepository {
         return all.stream()
                 .map(this::pageFromRow)
                 .map(Page::getOrder)
-                .reduce(Math::max).orElse(null);
+                .reduce(Math::max).orElse(0);
     }
 
     @Override
@@ -125,7 +126,7 @@ public class CassandraPageRepository implements PageRepository {
                                 "created_at", "updated_at", "homepage"},
                         new Object[]{page.getId(), pageType, page.getName(), page.getContent(), page.getLastContributor(),
                                 page.getOrder(), page.isPublished(), sourceType, configuration,
-                                tryItURL, tryIt, page.getApi(),
+                                tryItURL, tryIt, page.getApi()==null ? NULL : page.getApi(),
                                 page.getCreatedAt(), page.getUpdatedAt(), page.isHomepage()});
 
         session.execute(insert);
@@ -179,7 +180,7 @@ public class CassandraPageRepository implements PageRepository {
                 .and(set("source_configuration", configuration))
                 .and(set("configuration_tryiturl", tryItURL))
                 .and(set("configuration_tryit", tryIt))
-                .and(set("api", page.getApi()))
+                .and(set("api", page.getApi()==null ? NULL : page.getApi()))
                 .and(set("updated_at", page.getUpdatedAt()))
                 .and(set("homepage", page.isHomepage()))
                 .where(eq("id", page.getId()));
@@ -215,6 +216,50 @@ public class CassandraPageRepository implements PageRepository {
         return rowList.stream().map(this::pageFromRow).collect(Collectors.toSet());
     }
 
+    @Override
+    public Collection<Page> findPortalPageByHomepage(boolean isHomepage) throws TechnicalException {
+
+        LOGGER.debug("Find Portal Pages by homepage [{}]", isHomepage);
+
+        final Statement select = QueryBuilder.
+                select().
+                all().
+                from(PAGES_TABLE).
+                allowFiltering().
+                where(eq("api", NULL)).
+                and(eq("homepage", isHomepage));
+
+        List<Row> rowList = session.execute(select).all();
+
+        return rowList.stream().map(this::pageFromRow).collect(Collectors.toSet());
+    }
+
+    @Override
+    public Collection<Page> findPortalPages() throws TechnicalException {
+        LOGGER.debug("Find Portal Pages");
+
+        final Statement select = QueryBuilder.select().all().from(PAGES_TABLE).allowFiltering().where(eq("api", NULL));
+
+        final ResultSet resultSet = session.execute(select);
+
+        return resultSet.all().stream().map(this::pageFromRow).collect(Collectors.toSet());
+    }
+
+    @Override
+    public Integer findMaxPortalPageOrder() throws TechnicalException {
+        LOGGER.debug("Find max Portal Pages order");
+
+        final Statement select = QueryBuilder.select().all().from(PAGES_TABLE).allowFiltering()
+                .where(eq("api", NULL));
+
+        final List<Row> all = session.execute(select).all();
+
+        return all.stream()
+                .map(this::pageFromRow)
+                .map(Page::getOrder)
+                .reduce(Math::max).orElse(0);
+    }
+
     private Page pageFromRow(Row row) {
         if (row!= null) {
             final Page page = new Page();
@@ -244,7 +289,7 @@ public class CassandraPageRepository implements PageRepository {
             pageConfiguration.setTryIt(row.getBool("configuration_tryit"));
             page.setConfiguration(pageConfiguration);
 
-            page.setApi(row.getString("api"));
+            page.setApi(NULL.equals(row.getString("api")) ? null : row.getString("api"));
             page.setCreatedAt(row.getTimestamp("created_at"));
             page.setUpdatedAt(row.getTimestamp("updated_at"));
             return page;
