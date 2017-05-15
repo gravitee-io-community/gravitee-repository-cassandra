@@ -48,13 +48,17 @@ public class CassandraRateLimitRepository implements RateLimitRepository {
 
         final Row row = session.execute(select).one();
 
-        return rateLimitFromRow(row);
+        RateLimit rateLimit = rateLimitFromRow(row);
+        if (rateLimit == null) {
+            rateLimit = new RateLimit(rateId);
+        }
+        return rateLimit;
     }
 
     @Override
     public void save(RateLimit rateLimit) {
         Statement insert = QueryBuilder.insertInto(RATELIMITS_TABLE)
-                .values(new String[]{"key", "last_request", "counter", "reset_time", "created_at", "updated_at", "async"},
+                .values(new String[]{"id", "last_request", "counter", "reset_time", "created_at", "updated_at", "async"},
                         new Object[]{rateLimit.getKey(), rateLimit.getLastRequest(), rateLimit.getCounter(),
                                 rateLimit.getResetTime(), new Timestamp(rateLimit.getCreatedAt()), new Timestamp(rateLimit.getUpdatedAt()),
                                 rateLimit.isAsync()});
@@ -84,14 +88,14 @@ public class CassandraRateLimitRepository implements RateLimitRepository {
         };
     }
 
-    private RateLimit rateLimitFromRow(Row row) {
+    private RateLimit rateLimitFromRow(final Row row) {
         if (row != null) {
-            final RateLimit rateLimit = new RateLimit(row.getString("key"));
+            final RateLimit rateLimit = new RateLimit(row.getString("id"));
             rateLimit.setLastRequest(row.getLong("last_request"));
             rateLimit.setCounter(row.getLong("counter"));
             rateLimit.setResetTime(row.getLong("reset_time"));
-            rateLimit.setCreatedAt(row.getTimestamp("created_at").getTime());
-            rateLimit.setUpdatedAt(row.getTimestamp("updated_at").getTime());
+            rateLimit.setCreatedAt(row.getLong("created_at"));
+            rateLimit.setUpdatedAt(row.getLong("updated_at"));
             rateLimit.setAsync(row.getBool("async"));
             return rateLimit;
         }
