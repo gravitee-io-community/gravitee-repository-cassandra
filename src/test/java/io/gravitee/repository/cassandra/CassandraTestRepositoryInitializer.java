@@ -50,8 +50,9 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.plans (id text PRIMARY KEY, name text, description text, validation text, type text, status text, plan_order int, apis set<text>, created_at timestamp, updated_at timestamp, definition text, characteristics list<text>, security text, published_at timestamp, closed_at timestamp);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.users (username text PRIMARY KEY, source text, source_id text, password text, email text, firstname text, lastname text, roles set<text>, created_at timestamp, updated_at timestamp, last_connection_at timestamp, picture text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.subscriptions (id text PRIMARY KEY, plan text, application text, reason text, status text, created_at timestamp, updated_at timestamp, processed_at timestamp, starting_at timestamp, ending_at timestamp, processed_by text, subscribed_by text);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.metadata (key text, reference_id text, reference_type text, name text, format text, value text, created_at timestamp, updated_at timestamp, PRIMARY KEY (key, reference_id, reference_type));");
 
-        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (key text PRIMARY KEY, last_request bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);");
     }
 
     @Override
@@ -72,6 +73,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("TRUNCATE gravitee.plans;");
         session.execute("TRUNCATE gravitee.users;");
         session.execute("TRUNCATE gravitee.subscriptions;");
+        session.execute("TRUNCATE gravitee.metadata;");
 
         session.execute("TRUNCATE gravitee.ratelimits;");
     }
