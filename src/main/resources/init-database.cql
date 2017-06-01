@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS gravitee.tenants (id text PRIMARY KEY, name text, des
 CREATE TABLE IF NOT EXISTS gravitee.views (id text PRIMARY KEY, name text, description text);
 CREATE TABLE IF NOT EXISTS gravitee.tags (id text PRIMARY KEY, name text, description text);
 CREATE TABLE IF NOT EXISTS gravitee.apikeys (id text PRIMARY KEY, subscription text, application text, plan text, expire_at timestamp, created_at timestamp, updated_at timestamp, revoked_at timestamp, revoked boolean);
-CREATE TABLE IF NOT EXISTS gravitee.apis (id text PRIMARY KEY, name text, description text, version text, definition text, deployed_at timestamp, created_at timestamp, updated_at timestamp, visibility text, lifecycle_state text, picture text, group text, views set<text>);
+CREATE TABLE IF NOT EXISTS gravitee.apis (id text PRIMARY KEY, name text, description text, version text, definition text, deployed_at timestamp, created_at timestamp, updated_at timestamp, visibility text, lifecycle_state text, picture text, group text, views set<text>, labels list<text>);
 CREATE TABLE IF NOT EXISTS gravitee.applications (id text PRIMARY KEY, name text, description text, type text, created_at timestamp, updated_at timestamp, group text, status text);
 CREATE TABLE IF NOT EXISTS gravitee.events (id text PRIMARY KEY, type text, payload text, parent_id text, properties map<text, text>, created_at timestamp, updated_at timestamp);
 CREATE TABLE IF NOT EXISTS gravitee.groups (id text PRIMARY KEY, type text, name text, administrators list<text>, created_at timestamp, updated_at timestamp);

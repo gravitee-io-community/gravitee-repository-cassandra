@@ -117,10 +117,10 @@ public class CassandraApiRepository implements ApiRepository {
         }
         Statement insert = QueryBuilder.insertInto(APIS_TABLE)
                 .values(new String[]{"id", "name", "description", "version", "definition", "deployed_at", "created_at",
-                                "updated_at", "visibility", "lifecycle_state", "picture", "group", "views"},
+                                "updated_at", "visibility", "lifecycle_state", "picture", "group", "views", "labels"},
                         new Object[]{api.getId(), api.getName(), api.getDescription(), api.getVersion(), api.getDefinition(),
                                 api.getDeployedAt(), api.getCreatedAt(), api.getUpdatedAt(), visibility,
-                                api.getLifecycleState().toString(), api.getPicture(), api.getGroup(), api.getViews()});
+                                api.getLifecycleState().toString(), api.getPicture(), api.getGroup(), api.getViews(), api.getLabels()});
 
         session.execute(insert);
 
@@ -143,6 +143,7 @@ public class CassandraApiRepository implements ApiRepository {
                 .and(set("picture", api.getPicture()))
                 .and(set("group", api.getGroup()))
                 .and(set("views", api.getViews()))
+                .and(set("labels", api.getLabels()))
                 .where(eq("id", api.getId()));
 
         session.execute(update);
@@ -181,6 +182,7 @@ public class CassandraApiRepository implements ApiRepository {
             api.setPicture(row.getString("picture"));
             api.setGroup(row.getString("group"));
             api.setViews(row.getSet("views", String.class));
+            api.setLabels(row.getList("labels", String.class));
             return api;
         }
         return null;
