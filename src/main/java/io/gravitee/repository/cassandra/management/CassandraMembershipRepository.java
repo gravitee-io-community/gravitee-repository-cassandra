@@ -25,6 +25,7 @@ import io.gravitee.repository.exceptions.TechnicalException;
 import io.gravitee.repository.management.api.MembershipRepository;
 import io.gravitee.repository.management.model.Membership;
 import io.gravitee.repository.management.model.MembershipReferenceType;
+import io.gravitee.repository.management.model.RoleScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +36,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
 
 /**
  * @author LeansysTeam (leansys dot fr)
@@ -54,12 +53,13 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
     @Override
     public Membership create(Membership membership) throws TechnicalException {
-        LOGGER.debug("Create Membership {}", membership.getType());
+        String membershipType = convertRoleToType(membership.getRoleScope(), membership.getRoleName());
+        LOGGER.debug("Create Membership {}", membershipType);
 
         Statement insert = QueryBuilder.insertInto(MEMBERSHIPS_TABLE)
                 .values(new String[]{"user_id", "reference_id", "reference_type", "type", "created_at", "updated_at"},
                         new Object[]{membership.getUserId(), membership.getReferenceId(), membership.getReferenceType().toString(),
-                        membership.getType(), membership.getCreatedAt(), membership.getUpdatedAt()});
+                                membershipType, membership.getCreatedAt(), membership.getUpdatedAt()});
 
         session.execute(insert);
 
@@ -68,10 +68,11 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
     @Override
     public Membership update(Membership membership) throws TechnicalException {
-        LOGGER.debug("Update Membership {}", membership.getType());
+        String membershipType = convertRoleToType(membership.getRoleScope(), membership.getRoleName());
+        LOGGER.debug("Update Membership {}", membershipType);
 
         Statement update = QueryBuilder.update(MEMBERSHIPS_TABLE)
-                .with(set("type", membership.getType()))
+                .with(set("type", membershipType))
                 .and(set("created_at", membership.getCreatedAt()))
                 .and(set("updated_at", membership.getUpdatedAt()))
                 .where(eq("user_id", membership.getUserId()))
@@ -114,7 +115,8 @@ public class CassandraMembershipRepository implements MembershipRepository {
     }
 
     @Override
-    public Set<Membership> findByReferenceAndMembershipType(MembershipReferenceType referenceType, String referenceId, String membershipType) throws TechnicalException {
+    public Set<Membership> findByReferenceAndRole(MembershipReferenceType referenceType, String referenceId, RoleScope roleScope, String roleName) throws TechnicalException {
+        String membershipType = convertRoleToType(roleScope, roleName);
         LOGGER.debug("Find Membership by Reference & MembershipType [{}]-[{}]-[{}]", referenceType, referenceId, membershipType);
 
         Statement select;
@@ -135,7 +137,8 @@ public class CassandraMembershipRepository implements MembershipRepository {
     }
 
     @Override
-    public Set<Membership> findByReferencesAndMembershipType(MembershipReferenceType referenceType, List<String> referenceIds, String membershipType) throws TechnicalException {
+    public Set<Membership> findByReferencesAndRole(MembershipReferenceType referenceType, List<String> referenceIds, RoleScope roleScope, String roleName) throws TechnicalException {
+        String membershipType = convertRoleToType(roleScope, roleName);
         LOGGER.debug("Find Membership by References & MembershipType [{}]-[{}]", referenceType, membershipType);
 
         Statement select;
@@ -169,7 +172,8 @@ public class CassandraMembershipRepository implements MembershipRepository {
     }
 
     @Override
-    public Set<Membership> findByUserAndReferenceTypeAndMembershipType(String userId, MembershipReferenceType referenceType, String membershipType) throws TechnicalException {
+    public Set<Membership> findByUserAndReferenceTypeAndRole(String userId, MembershipReferenceType referenceType, RoleScope roleScope, String roleName) throws TechnicalException {
+        String membershipType = convertRoleToType(roleScope, roleName);
         LOGGER.debug("Find Membership by User, Reference & MembershipType [{}]-[{}]-[{}]", userId, referenceType, membershipType);
 
         final Statement select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
@@ -188,7 +192,9 @@ public class CassandraMembershipRepository implements MembershipRepository {
             membership.setUserId(row.getString("user_id"));
             membership.setReferenceId(row.getString("reference_id"));
             membership.setReferenceType(MembershipReferenceType.valueOf(row.getString("reference_type").toUpperCase()));
-            membership.setType(row.getString("type"));
+            String[] scopeAndName = convertTypeToRole(row.getString("type"));
+            membership.setRoleScope(Integer.valueOf(scopeAndName[0]));
+            membership.setRoleName(scopeAndName[1]);
             membership.setCreatedAt(row.getTimestamp("created_at"));
             membership.setUpdatedAt(row.getTimestamp("updated_at"));
             return membership;
@@ -196,4 +202,25 @@ public class CassandraMembershipRepository implements MembershipRepository {
         return null;
     }
 
+    private String convertRoleToType(RoleScope roleScope, String roleName) {
+        if (roleName == null) {
+            return null;
+        }
+        return convertRoleToType(roleScope.getId(), roleName);
+    }
+
+    private String convertRoleToType(int roleScope, String roleName) {
+        return roleScope + ":" + roleName;
+    }
+
+    private String[] convertTypeToRole(String type) {
+        if(type == null) {
+            return null;
+        }
+        String[] role = type.split(":");
+        if (role .length != 2) {
+            return null;
+        }
+        return role;
+    }
 }

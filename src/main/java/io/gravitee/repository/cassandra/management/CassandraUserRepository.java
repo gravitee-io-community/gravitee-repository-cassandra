@@ -57,9 +57,9 @@ public class CassandraUserRepository implements UserRepository {
 
         Statement insert = QueryBuilder.insertInto(USERS_TABLE)
                 .values(new String[]{"username", "source", "source_id", "password", "email", "firstname", "lastname",
-                        "roles", "created_at", "updated_at", "last_connection_at", "picture"},
+                        "created_at", "updated_at", "last_connection_at", "picture"},
                         new Object[]{user.getUsername(), user.getSource(), user.getSourceId(), user.getPassword(),
-                        user.getEmail(), user.getFirstname(), user.getLastname(), user.getRoles(),
+                        user.getEmail(), user.getFirstname(), user.getLastname(),
                         user.getCreatedAt(), user.getUpdatedAt(), user.getLastConnectionAt(), user.getPicture()});
 
         session.execute(insert);
@@ -84,7 +84,6 @@ public class CassandraUserRepository implements UserRepository {
                 .and(set("email", user.getEmail()))
                 .and(set("firstname", user.getFirstname()))
                 .and(set("lastname", user.getLastname()))
-                .and(set("roles", user.getRoles()))
                 .and(set("updated_at", user.getUpdatedAt()))
                 .and(set("last_connection_at", user.getLastConnectionAt()))
                 .and(set("picture", user.getPicture()))
@@ -145,7 +144,6 @@ public class CassandraUserRepository implements UserRepository {
             user.setEmail(row.getString("email"));
             user.setFirstname(row.getString("firstname"));
             user.setLastname(row.getString("lastname"));
-            user.setRoles(row.getSet("roles", String.class));
             user.setCreatedAt(row.getTimestamp("created_at"));
             user.setUpdatedAt(row.getTimestamp("updated_at"));
             user.setLastConnectionAt(row.getTimestamp("last_connection_at"));

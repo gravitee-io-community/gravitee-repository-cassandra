@@ -115,7 +115,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
         return Optional.ofNullable(applicationFromRow(row));
     }
 
-//    @Override
+    @Override
     public Set<Application> findByName(String partialName) throws TechnicalException {
         LOGGER.debug("Find Application by partial name [{}]", partialName);
 
