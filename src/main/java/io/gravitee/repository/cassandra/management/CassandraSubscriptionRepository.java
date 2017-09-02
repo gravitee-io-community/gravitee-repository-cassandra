@@ -96,11 +96,11 @@ public class CassandraSubscriptionRepository implements SubscriptionRepository {
 
         Statement insert = QueryBuilder.insertInto(SUBSCRIPTIONS_TABLE)
                 .values(new String[]{"id", "created_at", "updated_at", "processed_at", "starting_at", "ending_at",
-                                "processed_by", "subscribed_by", "plan", "reason", "status", "application"},
+                                "processed_by", "subscribed_by", "plan", "reason", "status", "application", "closed_at"},
                         new Object[]{subscription.getId(), subscription.getCreatedAt(), subscription.getUpdatedAt(),
                                 subscription.getProcessedAt(), subscription.getStartingAt(), subscription.getEndingAt(),
                                 subscription.getProcessedBy(), subscription.getSubscribedBy(), subscription.getPlan(),
-                                subscription.getReason(), status, subscription.getApplication()});
+                                subscription.getReason(), status, subscription.getApplication(), subscription.getClosedAt()});
 
         session.execute(insert);
 
@@ -130,6 +130,7 @@ public class CassandraSubscriptionRepository implements SubscriptionRepository {
                 .and(set("reason", subscription.getReason()))
                 .and(set("status", status))
                 .and(set("application", subscription.getApplication()))
+                .and(set("closed_at", subscription.getClosedAt()))
                 .where(eq("id", subscription.getId()));
 
         session.execute(update);
@@ -160,6 +161,7 @@ public class CassandraSubscriptionRepository implements SubscriptionRepository {
             subscription.setApplication(row.getString("application"));
             subscription.setPlan(row.getString("plan"));
             subscription.setReason(row.getString("reason"));
+            subscription.setClosedAt(row.getTimestamp("closed_at"));
             final String status = row.getString("status");
             if (status != null) {
                 subscription.setStatus(Subscription.Status.valueOf(status));
