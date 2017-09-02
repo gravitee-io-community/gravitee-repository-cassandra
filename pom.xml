@@ -32,7 +32,7 @@
     <name>Gravitee.io APIM - API Management - Repository Cassandra</name>
 
     <properties>
-        <gravitee-repository.version>1.8.1</gravitee-repository.version>
+        <gravitee-repository.version>1.9.0-SNAPSHOT</gravitee-repository.version>
         <gravitee-repository-test.version>1.8.1</gravitee-repository-test.version>
         <cassandra-driver.version>3.1.2</cassandra-driver.version>
         <cassandra-unit.version>3.1.1.0</cassandra-unit.version>
