@@ -32,9 +32,7 @@ import org.springframework.stereotype.Repository;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
 
 /**
  * @author Adel Abdelhak (adel.abdelhak@leansys.fr)
@@ -89,18 +87,22 @@ public class CassandraApplicationRepository implements ApplicationRepository {
         LOGGER.debug("Find Applications by Group list");
 
         // may be wrong : should loop through list and add resultsets to a list of resultset
-        final Statement select = QueryBuilder.select().all().from(APPLICATIONS_TABLE).allowFiltering()
-                .where(in("group", groups));
+        final Statement select = QueryBuilder.select().all().from(APPLICATIONS_TABLE);
 
         final ResultSet resultSet = session.execute(select);
 
-        Set<Application> applications = resultSet.all().stream().map(this::applicationFromRow).collect(Collectors.toSet());
+        Set<Application> applications = resultSet.all().stream().
+                map(this::applicationFromRow).
+                filter(application -> application.getGroups().stream().map(group-> groups.contains(group)).reduce(Boolean::logicalOr).orElse(false)).
+                collect(Collectors.toSet());
+
         if (statuses != null && statuses.length > 0) {
             List<ApplicationStatus> applicationStatuses = Arrays.asList(statuses);
             applications = applications.stream().
                     filter(app -> applicationStatuses.contains(app.getStatus())).
                     collect(Collectors.toSet());
         }
+
         return applications;
     }
 
@@ -136,10 +138,10 @@ public class CassandraApplicationRepository implements ApplicationRepository {
         LOGGER.debug("Create Application [{}]", application.getId());
 
         Statement insert = QueryBuilder.insertInto(APPLICATIONS_TABLE)
-                .values(new String[]{"id", "name", "description", "type", "created_at", "updated_at", "group", "status"},
+                .values(new String[]{"id", "name", "description", "type", "created_at", "updated_at", "groups", "status"},
                         new Object[]{application.getId(), application.getName(), application.getDescription(),
                                 application.getType(), application.getCreatedAt(), application.getUpdatedAt(),
-                                application.getGroup(), application.getStatus().toString()});
+                                application.getGroups(), application.getStatus().toString()});
 
         session.execute(insert);
 
@@ -156,7 +158,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
                 .and(set("type", application.getType()))
                 .and(set("created_at", application.getCreatedAt()))
                 .and(set("updated_at", application.getUpdatedAt()))
-                .and(set("group", application.getGroup()))
+                .and(set("groups", application.getGroups()))
                 .and(set("status", application.getStatus().toString()))
                 .where(eq("id", application.getId()));
 
@@ -183,7 +185,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
             application.setType(row.getString("type"));
             application.setCreatedAt(row.getTimestamp("created_at"));
             application.setUpdatedAt(row.getTimestamp("updated_at"));
-            application.setGroup(row.getString("group"));
+            application.setGroups(row.getSet("groups", String.class));
             application.setStatus(ApplicationStatus.valueOf(row.getString("status")));
             return application;
         }

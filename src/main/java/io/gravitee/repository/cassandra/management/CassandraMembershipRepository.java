@@ -31,9 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
@@ -53,13 +51,12 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
     @Override
     public Membership create(Membership membership) throws TechnicalException {
-        String membershipType = convertRoleToType(membership.getRoleScope(), membership.getRoleName());
-        LOGGER.debug("Create Membership {}", membershipType);
+        LOGGER.debug("Create Membership {}", membership);
 
         Statement insert = QueryBuilder.insertInto(MEMBERSHIPS_TABLE)
-                .values(new String[]{"user_id", "reference_id", "reference_type", "type", "created_at", "updated_at"},
+                .values(new String[]{"user_id", "reference_id", "reference_type", "roles", "created_at", "updated_at"},
                         new Object[]{membership.getUserId(), membership.getReferenceId(), membership.getReferenceType().toString(),
-                                membershipType, membership.getCreatedAt(), membership.getUpdatedAt()});
+                                convertRolesToStrings(membership), membership.getCreatedAt(), membership.getUpdatedAt()});
 
         session.execute(insert);
 
@@ -68,11 +65,10 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
     @Override
     public Membership update(Membership membership) throws TechnicalException {
-        String membershipType = convertRoleToType(membership.getRoleScope(), membership.getRoleName());
-        LOGGER.debug("Update Membership {}", membershipType);
+        LOGGER.debug("Update Membership {}", membership);
 
         Statement update = QueryBuilder.update(MEMBERSHIPS_TABLE)
-                .with(set("type", membershipType))
+                .with(set("roles", convertRolesToStrings(membership)))
                 .and(set("created_at", membership.getCreatedAt()))
                 .and(set("updated_at", membership.getUpdatedAt()))
                 .where(eq("user_id", membership.getUserId()))
@@ -115,6 +111,22 @@ public class CassandraMembershipRepository implements MembershipRepository {
     }
 
     @Override
+    public Set<Membership> findByIds(String userId, MembershipReferenceType referenceType, Set<String> referenceIds) throws TechnicalException {
+        LOGGER.debug("Find Membership by IDs [{}]-[{}]-[{}]", userId, referenceType, referenceIds);
+
+        if (userId == null) {
+            return Collections.emptySet();
+        }
+
+        final Statement select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
+                .where(eq("user_id", userId))
+                .and(eq("reference_type", referenceType.toString()));
+
+        final ResultSet resultSet = session.execute(select);
+        return resultSet.all().stream().map(this::membershipFromRow).filter(membership -> referenceIds.contains(membership.getReferenceId())).collect(Collectors.toSet());
+    }
+
+    @Override
     public Set<Membership> findByReferenceAndRole(MembershipReferenceType referenceType, String referenceId, RoleScope roleScope, String roleName) throws TechnicalException {
         String membershipType = convertRoleToType(roleScope, roleName);
         LOGGER.debug("Find Membership by Reference & MembershipType [{}]-[{}]-[{}]", referenceType, referenceId, membershipType);
@@ -128,7 +140,7 @@ public class CassandraMembershipRepository implements MembershipRepository {
             select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
                     .where(eq("reference_id", referenceId))
                     .and(eq("reference_type", referenceType.toString()))
-                    .and(eq("type", membershipType));
+                    .and(contains("roles", membershipType));
         }
 
         final ResultSet resultSet = session.execute(select);
@@ -140,22 +152,16 @@ public class CassandraMembershipRepository implements MembershipRepository {
     public Set<Membership> findByReferencesAndRole(MembershipReferenceType referenceType, List<String> referenceIds, RoleScope roleScope, String roleName) throws TechnicalException {
         String membershipType = convertRoleToType(roleScope, roleName);
         LOGGER.debug("Find Membership by References & MembershipType [{}]-[{}]", referenceType, membershipType);
-
-        Statement select;
-        if (membershipType == null) {
-            select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
-                    .where(in("reference_id", referenceIds))
-                    .and(eq("reference_type", referenceType.toString()));
-        } else {
-            select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
-                    .where(in("reference_id", referenceIds))
-                    .and(eq("reference_type", referenceType.toString()))
-                    .and(eq("type", membershipType));
-        }
+        Statement select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
+                .where(eq("reference_type", referenceType.toString()));
 
         final ResultSet resultSet = session.execute(select);
 
-        return resultSet.all().stream().map(this::membershipFromRow).collect(Collectors.toSet());
+        return resultSet.all().stream().
+                filter(row -> referenceIds.contains(row.getString("reference_id"))
+                        && (membershipType == null || row.getSet("roles", String.class).contains(membershipType))).
+                map(this::membershipFromRow).
+                collect(Collectors.toSet());
     }
 
     @Override
@@ -179,7 +185,7 @@ public class CassandraMembershipRepository implements MembershipRepository {
         final Statement select = QueryBuilder.select().all().from(MEMBERSHIPS_TABLE).allowFiltering()
                 .where(eq("user_id", userId))
                 .and(eq("reference_type", referenceType.toString()))
-                .and(eq("type", membershipType));
+                .and(contains("roles", membershipType));
 
         final ResultSet resultSet = session.execute(select);
 
@@ -192,14 +198,29 @@ public class CassandraMembershipRepository implements MembershipRepository {
             membership.setUserId(row.getString("user_id"));
             membership.setReferenceId(row.getString("reference_id"));
             membership.setReferenceType(MembershipReferenceType.valueOf(row.getString("reference_type").toUpperCase()));
-            String[] scopeAndName = convertTypeToRole(row.getString("type"));
-            membership.setRoleScope(Integer.valueOf(scopeAndName[0]));
-            membership.setRoleName(scopeAndName[1]);
+            Set<String> rolesAsString = row.getSet("roles", String.class);
+            Map<Integer, String> roles = new HashMap<>(rolesAsString.size());
+            for (String roleAsString : rolesAsString) {
+                String[] role = convertTypeToRole(roleAsString);
+                roles.put(Integer.valueOf(role[0]), role[1]);
+            }
+            membership.setRoles(roles);
             membership.setCreatedAt(row.getTimestamp("created_at"));
             membership.setUpdatedAt(row.getTimestamp("updated_at"));
             return membership;
         }
         return null;
+    }
+
+    private Set<String> convertRolesToStrings(Membership membership) {
+        if (membership.getRoles() != null) {
+            Set<String> roles = new HashSet<>(membership.getRoles().size());
+            for (Map.Entry<Integer, String> roleEntry : membership.getRoles().entrySet()) {
+                roles.add(convertRoleToType(roleEntry.getKey(), roleEntry.getValue()));
+            }
+            return roles;
+        }
+        return Collections.emptySet();
     }
 
     private String convertRoleToType(RoleScope roleScope, String roleName) {
