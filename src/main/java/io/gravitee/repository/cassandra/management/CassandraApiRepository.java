@@ -88,7 +88,7 @@ public class CassandraApiRepository implements ApiRepository {
     public Set<Api> findByGroups(List<String> groups) throws TechnicalException {
         LOGGER.debug("Find Apis by Group list");
 
-        final Statement select = select().all().from(APIS_TABLE).where(in("id", groups));
+        final Statement select = select().all().from(APIS_TABLE).where(contains("groups", groups));
 
         final ResultSet resultSet = session.execute(select);
 
@@ -117,10 +117,10 @@ public class CassandraApiRepository implements ApiRepository {
         }
         Statement insert = QueryBuilder.insertInto(APIS_TABLE)
                 .values(new String[]{"id", "name", "description", "version", "definition", "deployed_at", "created_at",
-                                "updated_at", "visibility", "lifecycle_state", "picture", "group", "views", "labels"},
+                                "updated_at", "visibility", "lifecycle_state", "picture", "groups", "views", "labels"},
                         new Object[]{api.getId(), api.getName(), api.getDescription(), api.getVersion(), api.getDefinition(),
                                 api.getDeployedAt(), api.getCreatedAt(), api.getUpdatedAt(), visibility,
-                                api.getLifecycleState().toString(), api.getPicture(), api.getGroup(), api.getViews(), api.getLabels()});
+                                api.getLifecycleState().toString(), api.getPicture(), api.getGroups(), api.getViews(), api.getLabels()});
 
         session.execute(insert);
 
@@ -142,7 +142,7 @@ public class CassandraApiRepository implements ApiRepository {
                 .and(set("visibility", api.getVisibility().toString()))
                 .and(set("lifecycle_state", api.getLifecycleState().toString()))
                 .and(set("picture", api.getPicture()))
-                .and(set("group", api.getGroup()))
+                .and(set("groups", api.getGroups()))
                 .and(set("views", api.getViews()))
                 .and(set("labels", api.getLabels()))
                 .where(eq("id", api.getId()));
@@ -181,7 +181,7 @@ public class CassandraApiRepository implements ApiRepository {
             api.setVisibility(visibility);
             api.setLifecycleState(LifecycleState.valueOf(row.getString("lifecycle_state").toUpperCase()));
             api.setPicture(row.getString("picture"));
-            api.setGroup(row.getString("group"));
+            api.setGroups(row.getSet("groups", String.class));
             api.setViews(row.getSet("views", String.class));
             api.setLabels(row.getList("labels", String.class));
             return api;
