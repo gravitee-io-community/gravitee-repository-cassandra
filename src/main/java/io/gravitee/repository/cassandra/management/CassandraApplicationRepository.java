@@ -154,6 +154,7 @@ public class CassandraApplicationRepository implements ApplicationRepository {
                 .with(set("name", application.getName()))
                 .and(set("description", application.getDescription()))
                 .and(set("type", application.getType()))
+                .and(set("created_at", application.getCreatedAt()))
                 .and(set("updated_at", application.getUpdatedAt()))
                 .and(set("group", application.getGroup()))
                 .and(set("status", application.getStatus().toString()))

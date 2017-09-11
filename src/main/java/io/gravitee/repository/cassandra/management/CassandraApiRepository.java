@@ -137,6 +137,7 @@ public class CassandraApiRepository implements ApiRepository {
                 .and(set("version", api.getVersion()))
                 .and(set("definition", api.getDefinition()))
                 .and(set("deployed_at", api.getDeployedAt()))
+                .and(set("created_at", api.getCreatedAt()))
                 .and(set("updated_at", api.getUpdatedAt()))
                 .and(set("visibility", api.getVisibility().toString()))
                 .and(set("lifecycle_state", api.getLifecycleState().toString()))
