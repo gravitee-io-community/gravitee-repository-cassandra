@@ -84,6 +84,7 @@ public class CassandraUserRepository implements UserRepository {
                 .and(set("email", user.getEmail()))
                 .and(set("firstname", user.getFirstname()))
                 .and(set("lastname", user.getLastname()))
+                .and(set("created_at", user.getCreatedAt()))
                 .and(set("updated_at", user.getUpdatedAt()))
                 .and(set("last_connection_at", user.getLastConnectionAt()))
                 .and(set("picture", user.getPicture()))
