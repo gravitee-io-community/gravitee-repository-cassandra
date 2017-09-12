@@ -68,6 +68,15 @@ public class CassandraMetadataRepository implements MetadataRepository {
 
     @Override
     public Metadata update(final Metadata metadata) throws TechnicalException {
+        if (metadata == null || metadata.getName() == null) {
+            throw new IllegalStateException("Metadata to update must have a name");
+        }
+
+        if (!findById(metadata.getKey(), metadata.getReferenceId(), metadata.getReferenceType()).isPresent()) {
+            throw new IllegalStateException(String.format("No metadata found with key [%s], reference id [%s] and type [%s]",
+                    metadata.getKey(), metadata.getReferenceId(), metadata.getReferenceType()));
+        }
+
         LOGGER.debug("Update metadata [{}]", metadata.getName());
 
         Statement update = QueryBuilder.update(METADATAS_TABLE)

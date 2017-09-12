@@ -65,7 +65,16 @@ public class CassandraMembershipRepository implements MembershipRepository {
 
     @Override
     public Membership update(Membership membership) throws TechnicalException {
+        if (membership == null || membership.getUserId() == null || membership.getReferenceId() == null || membership.getReferenceType() == null) {
+            throw new IllegalStateException("Membership to update must have an user id, a reference id and type");
+        }
         LOGGER.debug("Update Membership {}", membership);
+
+        if (!findById(membership.getUserId(), membership.getReferenceType(), membership.getReferenceId()).isPresent()) {
+            throw new IllegalStateException(String.format("No membership found with user id [%s], reference type [%s] and id [%s]",
+                    membership.getUserId(), membership.getReferenceType(), membership.getReferenceId()));
+        }
+
 
         Statement update = QueryBuilder.update(MEMBERSHIPS_TABLE)
                 .with(set("roles", convertRolesToStrings(membership)))

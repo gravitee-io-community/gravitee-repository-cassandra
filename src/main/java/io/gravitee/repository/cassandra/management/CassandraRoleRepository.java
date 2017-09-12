@@ -16,24 +16,27 @@
 
 package io.gravitee.repository.cassandra.management;
 
-import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import io.gravitee.repository.exceptions.TechnicalException;
-import io.gravitee.repository.management.api.MembershipRepository;
 import io.gravitee.repository.management.api.RoleRepository;
-import io.gravitee.repository.management.model.*;
+import io.gravitee.repository.management.model.Role;
+import io.gravitee.repository.management.model.RoleScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
 /**
  * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
@@ -89,6 +92,14 @@ public class CassandraRoleRepository implements RoleRepository {
 
     @Override
     public Role update(Role role) throws TechnicalException {
+        if (role == null || role.getScope() == null || role.getName() == null) {
+            throw new IllegalStateException("Role to update must not be null");
+        }
+
+        if (!findById(role.getScope(), role.getName()).isPresent()) {
+            throw new IllegalStateException(String.format("No role found with scope [%s] and name [%s]", role.getScope(), role.getName()));
+        }
+
         LOGGER.debug("Update Role [{}, {}]", role.getScope(), role.getName());
 
         List<Integer> perms = new ArrayList<>(role.getPermissions().length);

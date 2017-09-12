@@ -86,6 +86,14 @@ public class CassandraTenantRepository implements TenantRepository {
 
     @Override
     public Tenant update(Tenant tenant) throws TechnicalException {
+        if (tenant == null || tenant.getName() == null) {
+            throw new IllegalStateException("Tenant to update must have a name");
+        }
+
+        if (!findById(tenant.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No tenant found with name [%s]", tenant.getId()));
+        }
+
         LOGGER.debug("Update Tenant [{}]", tenant.getName());
 
         Statement update = QueryBuilder.update(TENANTS_TABLE)

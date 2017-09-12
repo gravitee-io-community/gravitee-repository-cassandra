@@ -77,6 +77,14 @@ public class CassandraApiKeyRepository implements ApiKeyRepository {
 
     @Override
     public ApiKey update(ApiKey apiKey) throws TechnicalException {
+        if (apiKey == null || apiKey.getKey() == null) {
+            throw new IllegalStateException("ApiKey to update must have an key");
+        }
+
+        if (!findById(apiKey.getKey()).isPresent()) {
+            throw new IllegalStateException(String.format("No apiKey found with key [%s]", apiKey.getKey()));
+        }
+
         LOGGER.debug("Update ApiKey [{}]", apiKey.getKey());
 
         Statement update = QueryBuilder.update(APIKEYS_TABLE)
@@ -84,7 +92,7 @@ public class CassandraApiKeyRepository implements ApiKeyRepository {
                 .and(set("application", apiKey.getApplication()))
                 .and(set("plan", apiKey.getPlan()))
                 .and(set("expire_at", apiKey.getExpireAt()))
-//                .and(set("created_at", apiKey.getCreatedAt()))
+                .and(set("created_at", apiKey.getCreatedAt()))
                 .and(set("updated_at", apiKey.getUpdatedAt()))
                 .and(set("revoked_at", apiKey.getRevokedAt()))
                 .and(set("revoked", apiKey.isRevoked()))

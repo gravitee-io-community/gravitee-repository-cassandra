@@ -109,6 +109,14 @@ public class CassandraGroupRepository implements GroupRepository {
 
     @Override
     public Group update(Group group) throws TechnicalException {
+        if (group == null) {
+            throw new IllegalStateException("Group must not be null");
+        }
+
+        if (!findById(group.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No group found with id [%s]", group.getId()));
+        }
+
         LOGGER.debug("Update Group [{}]", group.getId());
 
         List<?> eventRules = group.getEventRules() == null
