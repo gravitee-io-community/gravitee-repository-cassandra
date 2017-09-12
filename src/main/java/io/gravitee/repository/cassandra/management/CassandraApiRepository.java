@@ -129,6 +129,14 @@ public class CassandraApiRepository implements ApiRepository {
 
     @Override
     public Api update(Api api) throws TechnicalException {
+        if (api == null || api.getId() == null) {
+            throw new IllegalStateException("Api to update must have an id");
+        }
+
+        if (!findById(api.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No api found with id [%s]", api.getId()));
+        }
+
         LOGGER.debug("Update Api [{}]", api.getId());
 
         Statement update = QueryBuilder.update(APIS_TABLE)

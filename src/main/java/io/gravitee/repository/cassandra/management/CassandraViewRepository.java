@@ -85,6 +85,14 @@ public class CassandraViewRepository implements ViewRepository {
 
     @Override
     public View update(View view) throws TechnicalException {
+        if (view == null || view.getName() == null) {
+            throw new IllegalStateException("View to update must have a name");
+        }
+
+        if (!findById(view.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No view found with name [%s]", view.getId()));
+        }
+
         LOGGER.debug("Update View [{}]", view.getName());
 
         Statement update = QueryBuilder.update(VIEWS_TABLE)

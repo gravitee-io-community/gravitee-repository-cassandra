@@ -136,12 +136,12 @@ public class CassandraPageRepository implements PageRepository {
 
     @Override
     public Page update(Page page) throws TechnicalException {
-        if(page == null){
-            throw new IllegalArgumentException("Page must not be null");
+        if (page == null) {
+            throw new IllegalStateException("Page must not be null");
         }
 
-        if(!findById(page.getId()).isPresent()){
-            throw new IllegalArgumentException(String.format("No page found with id [%s]", page.getId()));
+        if (!findById(page.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No page found with id [%s]", page.getId()));
         }
 
         LOGGER.debug("Update Page {}", page.getName());

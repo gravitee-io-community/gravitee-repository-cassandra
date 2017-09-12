@@ -93,6 +93,14 @@ public class CassandraPlanRepository implements PlanRepository {
 
     @Override
     public Plan update(Plan plan) throws TechnicalException {
+        if (plan == null || plan.getId() == null) {
+            throw new IllegalStateException("Plan to update must have an id");
+        }
+
+        if (!findById(plan.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No plan found with id [%s]", plan.getId()));
+        }
+
         LOGGER.debug("Update Plan {}", plan.getName());
 
         String status = null;

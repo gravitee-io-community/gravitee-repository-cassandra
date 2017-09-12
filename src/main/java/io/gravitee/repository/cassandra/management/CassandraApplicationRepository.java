@@ -150,6 +150,14 @@ public class CassandraApplicationRepository implements ApplicationRepository {
 
     @Override
     public Application update(Application application) throws TechnicalException {
+        if (application == null || application.getId() == null) {
+            throw new IllegalStateException("Application to update must have an id");
+        }
+
+        if (!findById(application.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No application found with id [%s]", application.getId()));
+        }
+
         LOGGER.debug("Update Application [{}]", application.getId());
 
         Statement update = QueryBuilder.update(APPLICATIONS_TABLE)

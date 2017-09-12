@@ -125,6 +125,14 @@ public class CassandraEventRepository implements EventRepository {
 
     @Override
     public Event update(Event event) throws TechnicalException {
+        if (event == null || event.getId() == null) {
+            throw new IllegalStateException("Event to update must have an id");
+        }
+
+        if (!findById(event.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No event found with id [%s]", event.getId()));
+        }
+
         LOGGER.debug("Update Event [{}]", event.getId());
 
         Statement update = QueryBuilder.update(EVENTS_TABLE)

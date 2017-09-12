@@ -85,6 +85,14 @@ public class CassandraTagRepository implements TagRepository {
 
     @Override
     public Tag update(Tag tag) throws TechnicalException {
+        if (tag == null || tag.getName() == null) {
+            throw new IllegalStateException("Tag to update must have a name");
+        }
+
+        if (!findById(tag.getId()).isPresent()) {
+            throw new IllegalStateException(String.format("No tag found with name [%s]", tag.getId()));
+        }
+
         LOGGER.debug("Update Tag [{}]", tag.getName());
 
         Statement update = QueryBuilder.update(TAGS_TABLE)
