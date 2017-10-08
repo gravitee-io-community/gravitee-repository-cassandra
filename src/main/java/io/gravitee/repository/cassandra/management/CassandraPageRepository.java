@@ -123,11 +123,11 @@ public class CassandraPageRepository implements PageRepository {
         Statement insert = QueryBuilder.insertInto(PAGES_TABLE)
                 .values(new String[]{"id", "type", "name", "content", "last_contributor", "page_order", "published",
                                 "source_type", "source_configuration", "configuration_tryiturl", "configuration_tryit", "api",
-                                "created_at", "updated_at", "homepage"},
+                                "created_at", "updated_at", "homepage", "excludedGroups"},
                         new Object[]{page.getId(), pageType, page.getName(), page.getContent(), page.getLastContributor(),
                                 page.getOrder(), page.isPublished(), sourceType, configuration,
                                 tryItURL, tryIt, page.getApi()==null ? NULL : page.getApi(),
-                                page.getCreatedAt(), page.getUpdatedAt(), page.isHomepage()});
+                                page.getCreatedAt(), page.getUpdatedAt(), page.isHomepage(), page.getExcludedGroups()});
 
         session.execute(insert);
 
@@ -183,6 +183,7 @@ public class CassandraPageRepository implements PageRepository {
                 .and(set("api", page.getApi()==null ? NULL : page.getApi()))
                 .and(set("updated_at", page.getUpdatedAt()))
                 .and(set("homepage", page.isHomepage()))
+                .and(set("excludedGroups", page.getExcludedGroups()))
                 .where(eq("id", page.getId()));
 
         session.execute(update);
@@ -274,6 +275,7 @@ public class CassandraPageRepository implements PageRepository {
             page.setOrder(row.getInt("page_order"));
             page.setPublished(row.getBool("published"));
             page.setHomepage(row.getBool("homepage"));
+            page.setExcludedGroups(row.getList("excludedGroups", String.class));
 
             final String sourceType = row.getString("source_type");
             final String sourceConfiguration = row.getString("source_configuration");

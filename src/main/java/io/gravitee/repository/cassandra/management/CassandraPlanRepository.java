@@ -79,12 +79,12 @@ public class CassandraPlanRepository implements PlanRepository {
         final Statement insert = QueryBuilder.insertInto(PLANS_TABLE)
                 .values(new String[]{"id", "name", "description", "validation", "type", "plan_order", "apis",
                                 "created_at", "updated_at", "definition", "characteristics", "status", "security",
-                                "published_at", "closed_at"},
+                                "excludedGroups", "published_at", "closed_at"},
                         new Object[]{plan.getId(), plan.getName(), plan.getDescription(),
                                 plan.getValidation() == null ? Plan.PlanValidationType.MANUAL.toString() : plan.getValidation().toString(),
                                 plan.getType() == null ? Plan.PlanType.API.toString() : plan.getType().toString(),
                                 plan.getOrder(), plan.getApis(), plan.getCreatedAt(), plan.getUpdatedAt(), plan.getDefinition(),
-                                plan.getCharacteristics(), status, security, plan.getPublishedAt(), plan.getClosedAt()});
+                                plan.getCharacteristics(), status, security, plan.getExcludedGroups(), plan.getPublishedAt(), plan.getClosedAt()});
 
         session.execute(insert);
 
@@ -127,6 +127,7 @@ public class CassandraPlanRepository implements PlanRepository {
                 .and(set("characteristics", plan.getCharacteristics()))
                 .and(set("status", status))
                 .and(set("security", security))
+                .and(set("excludedGroups", plan.getExcludedGroups()))
                 .and(set("published_at", plan.getPublishedAt()))
                 .and(set("closed_at", plan.getClosedAt()))
                 .where(eq("id", plan.getId()));
@@ -181,6 +182,7 @@ public class CassandraPlanRepository implements PlanRepository {
             if (security != null) {
                 plan.setSecurity(Plan.PlanSecurityType.valueOf(security));
             }
+            plan.setExcludedGroups(row.getList("excludedGroups", String.class));
             plan.setPublishedAt(row.getTimestamp("published_at"));
             plan.setClosedAt(row.getTimestamp("closed_at"));
             return plan;
