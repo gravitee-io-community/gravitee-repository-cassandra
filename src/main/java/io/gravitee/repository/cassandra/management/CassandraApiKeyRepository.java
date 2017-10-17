@@ -20,20 +20,23 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
 import io.gravitee.repository.exceptions.TechnicalException;
 import io.gravitee.repository.management.api.ApiKeyRepository;
+import io.gravitee.repository.management.api.search.ApiKeyCriteria;
 import io.gravitee.repository.management.model.ApiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
 
 /**
  * @author Adel Abdelhak (adel.abdelhak@leansys.fr)
@@ -123,6 +126,30 @@ public class CassandraApiKeyRepository implements ApiKeyRepository {
         final ResultSet resultSet = session.execute(select);
 
         return resultSet.all().stream().map(this::apiKeyFromRow).collect(Collectors.toSet());
+    }
+
+    @Override
+    public List<ApiKey> findByCriteria(ApiKeyCriteria filter) throws TechnicalException {
+        final Select.Where query = QueryBuilder.select().all().from(APIKEYS_TABLE)
+                .allowFiltering().where();
+
+        if (! filter.isIncludeRevoked()) {
+            query.and(eq("revoked", false));
+        }
+
+        if (filter.getPlans() != null) {
+            query.and(in("plan", filter.getPlans()));
+        }
+
+        // set range query
+        if (filter.getFrom() != 0 && filter.getTo() != 0) {
+            query
+                    .and(gte("updated_at", new Date(filter.getFrom())))
+                    .and(lt("updated_at", new Date(filter.getTo())));
+        }
+        final ResultSet resultSet = session.execute(query);
+
+        return resultSet.all().stream().map(this::apiKeyFromRow).collect(Collectors.toList());
     }
 
     private ApiKey apiKeyFromRow(Row row) {
