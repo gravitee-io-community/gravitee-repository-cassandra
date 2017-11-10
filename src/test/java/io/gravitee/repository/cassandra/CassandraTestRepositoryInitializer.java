@@ -52,6 +52,8 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.subscriptions (id text PRIMARY KEY, plan text, application text, reason text, status text, created_at timestamp, updated_at timestamp, processed_at timestamp, starting_at timestamp, ending_at timestamp, processed_by text, subscribed_by text, closed_at timestamp);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.metadata (key text, reference_id text, reference_type text, name text, format text, value text, created_at timestamp, updated_at timestamp, PRIMARY KEY (key, reference_id, reference_type));");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.roles (scope int, name text, description text, default boolean, system boolean, permissions list<int>, created_at timestamp, updated_at timestamp, PRIMARY KEY (scope, name));");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratings (id text PRIMARY KEY, api text, user text, rate tinyint, title text, comment text, created_at timestamp, updated_at timestamp);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratinganswers (id text PRIMARY KEY, rating text, comment text, user text, created_at timestamp, updated_at timestamp);");
 
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);");
     }
@@ -76,6 +78,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("TRUNCATE gravitee.subscriptions;");
         session.execute("TRUNCATE gravitee.metadata;");
         session.execute("TRUNCATE gravitee.roles");
+        session.execute("TRUNCATE gravitee.ratings");
 
         session.execute("TRUNCATE gravitee.ratelimits;");
     }
