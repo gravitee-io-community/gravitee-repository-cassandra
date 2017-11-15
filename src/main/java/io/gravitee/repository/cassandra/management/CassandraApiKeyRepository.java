@@ -30,10 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
@@ -130,23 +127,25 @@ public class CassandraApiKeyRepository implements ApiKeyRepository {
 
     @Override
     public List<ApiKey> findByCriteria(ApiKeyCriteria filter) throws TechnicalException {
-        final Select.Where query = QueryBuilder.select().all().from(APIKEYS_TABLE)
-                .allowFiltering().where();
+        final Select.Where query = QueryBuilder.select().all().from(APIKEYS_TABLE).allowFiltering().where();
 
         if (! filter.isIncludeRevoked()) {
             query.and(eq("revoked", false));
         }
 
-        if (filter.getPlans() != null) {
-            query.and(in("plan", filter.getPlans()));
+        final Collection<String> plans = filter.getPlans();
+        if (plans != null && !plans.isEmpty()) {
+            query.and(in("plan", new ArrayList<>(plans)));
         }
 
         // set range query
-        if (filter.getFrom() != 0 && filter.getTo() != 0) {
-            query
-                    .and(gte("updated_at", new Date(filter.getFrom())))
-                    .and(lt("updated_at", new Date(filter.getTo())));
+        if (filter.getFrom() != 0) {
+            query.and(gte("updated_at", new Date(filter.getFrom())));
         }
+        if (filter.getTo() != 0) {
+            query.and(lt("updated_at", new Date(filter.getTo())));
+        }
+
         final ResultSet resultSet = session.execute(query);
 
         return resultSet.all().stream().map(this::apiKeyFromRow).collect(Collectors.toList());
