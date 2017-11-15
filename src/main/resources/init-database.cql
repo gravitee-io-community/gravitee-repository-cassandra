@@ -16,4 +16,4 @@ CREATE TABLE IF NOT EXISTS gravitee.subscriptions (id text PRIMARY KEY, plan tex
 CREATE TABLE IF NOT EXISTS gravitee.metadata (key text, reference_id text, reference_type text, name text, format text, value text, created_at timestamp, updated_at timestamp, PRIMARY KEY (key, reference_id, reference_type));
 CREATE TABLE IF NOT EXISTS gravitee.roles (scope int, name text, description text, default boolean, system boolean, permissions list<int>, created_at timestamp, updated_at timestamp, PRIMARY KEY (scope, name));
 
-CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request bigint, counter bigint, reset_time bigint, created_at bigint, updated_at bigint, async boolean);
+CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request timestamp, counter bigint, reset_time timestamp, created_at timestamp, updated_at timestamp, async boolean);
