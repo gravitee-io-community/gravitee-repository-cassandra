@@ -15,5 +15,8 @@ CREATE TABLE IF NOT EXISTS gravitee.users (username text PRIMARY KEY, source tex
 CREATE TABLE IF NOT EXISTS gravitee.subscriptions (id text PRIMARY KEY, plan text, application text, reason text, status text, created_at timestamp, updated_at timestamp, processed_at timestamp, starting_at timestamp, ending_at timestamp, processed_by text, subscribed_by text, closed_at timestamp);
 CREATE TABLE IF NOT EXISTS gravitee.metadata (key text, reference_id text, reference_type text, name text, format text, value text, created_at timestamp, updated_at timestamp, PRIMARY KEY (key, reference_id, reference_type));
 CREATE TABLE IF NOT EXISTS gravitee.roles (scope int, name text, description text, default boolean, system boolean, permissions list<int>, created_at timestamp, updated_at timestamp, PRIMARY KEY (scope, name));
+CREATE TABLE IF NOT EXISTS gravitee.ratings (id text PRIMARY KEY, api text, user text, rate tinyint, title text, comment text, created_at timestamp, updated_at timestamp);
+CREATE TABLE IF NOT EXISTS gravitee.ratinganswers (id text PRIMARY KEY, rating text, comment text, user text, created_at timestamp, updated_at timestamp);
+CREATE TABLE IF NOT EXISTS gravitee.audits (id text PRIMARY KEY, referenceId text, referenceType text, username text, createdAt timestamp, event text, patch text, properties map<text, text>)
 
 CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request timestamp, counter bigint, reset_time timestamp, created_at timestamp, updated_at timestamp, async boolean);

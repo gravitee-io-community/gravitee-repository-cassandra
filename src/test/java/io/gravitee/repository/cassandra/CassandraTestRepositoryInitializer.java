@@ -54,6 +54,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.roles (scope int, name text, description text, default boolean, system boolean, permissions list<int>, created_at timestamp, updated_at timestamp, PRIMARY KEY (scope, name));");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratings (id text PRIMARY KEY, api text, user text, rate tinyint, title text, comment text, created_at timestamp, updated_at timestamp);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratinganswers (id text PRIMARY KEY, rating text, comment text, user text, created_at timestamp, updated_at timestamp);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.audits (id text PRIMARY KEY, referenceId text, referenceType text, username text, createdAt timestamp, event text, patch text, properties map<text, text>);");
 
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.ratelimits (id text PRIMARY KEY, last_request timestamp, counter bigint, reset_time timestamp, created_at timestamp, updated_at timestamp, async boolean);");
     }
@@ -79,6 +80,8 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
         session.execute("TRUNCATE gravitee.metadata;");
         session.execute("TRUNCATE gravitee.roles");
         session.execute("TRUNCATE gravitee.ratings");
+        session.execute("TRUNCATE gravitee.ratinganswers");
+        session.execute("TRUNCATE gravitee.audits");
 
         session.execute("TRUNCATE gravitee.ratelimits;");
     }
