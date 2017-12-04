@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -75,8 +76,26 @@ public class CassandraViewRepository implements ViewRepository {
         LOGGER.debug("Create View [{}]", view.getName());
 
         Statement insert = QueryBuilder.insertInto(VIEWS_TABLE)
-                .values(new String[]{"id", "name", "description"},
-                        new Object[]{view.getId(), view.getName(), view.getDescription()});
+                .values(new String[] {
+                                "id",
+                                "name",
+                                "description",
+                                "defaultView",
+                                "hidden",
+                                "view_order",
+                                "updated_at",
+                                "created_at"
+                        },
+                        new Object[]{
+                                view.getId(),
+                                view.getName(),
+                                view.getDescription(),
+                                view.isDefaultView(),
+                                view.isHidden(),
+                                view.getOrder(),
+                                view.getUpdatedAt(),
+                                view.getCreatedAt()
+                        });
 
         session.execute(insert);
 
@@ -98,6 +117,11 @@ public class CassandraViewRepository implements ViewRepository {
         Statement update = QueryBuilder.update(VIEWS_TABLE)
                 .with(set("name", view.getName()))
                 .and(set("description", view.getDescription()))
+                .and(set("defaultView", view.isDefaultView()))
+                .and(set("hidden", view.isHidden()))
+                .and(set("view_order", view.getOrder()))
+                .and(set("updated_at", view.getUpdatedAt()))
+                .and(set("created_at", view.getCreatedAt()))
                 .where(eq("id", view.getId()));
 
         session.execute(update);
@@ -120,6 +144,12 @@ public class CassandraViewRepository implements ViewRepository {
             view.setId(row.getString("id"));
             view.setName(row.getString("name"));
             view.setDescription(row.getString("description"));
+            view.setDefaultView(row.getBool("defaultView"));
+            view.setHidden(row.getBool("hidden"));
+            view.setOrder(row.getInt("view_order"));
+            view.setCreatedAt(row.getTimestamp("created_at"));
+            view.setUpdatedAt(row.getTimestamp("updated_at"));
+
             return view;
         }
         return null;

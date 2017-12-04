@@ -38,7 +38,7 @@ public class CassandraTestRepositoryInitializer implements TestRepositoryInitial
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS gravitee WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '1' };");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.tenants (id text PRIMARY KEY, name text, description text);");
-        session.execute("CREATE TABLE IF NOT EXISTS gravitee.views (id text PRIMARY KEY, name text, description text);");
+        session.execute("CREATE TABLE IF NOT EXISTS gravitee.views (id text PRIMARY KEY, name text, description text, hidden boolean, defaultView boolean, view_order int, updated_at timestamp, created_at timestamp);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.tags (id text PRIMARY KEY, name text, description text);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.apikeys (key text PRIMARY KEY, subscription text, application text, plan text, expire_at timestamp, created_at timestamp, updated_at timestamp, revoked_at timestamp, revoked boolean);");
         session.execute("CREATE TABLE IF NOT EXISTS gravitee.apis (id text PRIMARY KEY, name text, description text, version text, definition text, deployed_at timestamp, created_at timestamp, updated_at timestamp, visibility text, lifecycle_state text, picture text, groups set<text>, views set<text>, labels list<text>);");
