@@ -79,7 +79,7 @@ public class CassandraRoleRepository implements RoleRepository {
 
         Statement insert = QueryBuilder.insertInto(ROLES_TABLE)
                 .values(new String[]{"scope", "name", "description",
-                                "default", "system", "permissions",
+                                "is_default", "system", "permissions",
                                 "created_at", "updated_at"},
                         new Object[]{role.getScope().getId(), role.getName(), role.getDescription(),
                                 role.isDefaultRole(), role.isSystem(), perms,
@@ -111,7 +111,7 @@ public class CassandraRoleRepository implements RoleRepository {
                 update(ROLES_TABLE).
                 with(set("description", role.getDescription())).
                 and(set("permissions", perms)).
-                and(set("default", role.isDefaultRole())).
+                and(set("is_default", role.isDefaultRole())).
                 and(set("system", role.isSystem())).
                 and(set("created_at", role.getCreatedAt())).
                 and(set("updated_at", role.getUpdatedAt())).
@@ -176,7 +176,7 @@ public class CassandraRoleRepository implements RoleRepository {
             role.setName(row.getString("name"));
             role.setScope(RoleScope.valueOf(row.getInt("scope")));
             role.setDescription(row.getString("description"));
-            role.setDefaultRole(row.getBool("default"));
+            role.setDefaultRole(row.getBool("is_default"));
             role.setSystem(row.getBool("system"));
             List<Integer> permissions = row.getList("permissions", Integer.class);
             if (permissions != null) {

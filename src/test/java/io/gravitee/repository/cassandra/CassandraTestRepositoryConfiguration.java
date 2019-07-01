@@ -57,7 +57,7 @@ public class CassandraTestRepositoryConfiguration extends ManagementRepositoryCo
         try {
             // on jenkins, default timeout is reached
             EmbeddedCassandraServerHelper.startEmbeddedCassandra(100000L);
-        } catch (TTransportException | InterruptedException | IOException e) {
+        } catch (TTransportException | IOException e) {
             e.printStackTrace();
         }
         final Session session = cluster.newSession();
